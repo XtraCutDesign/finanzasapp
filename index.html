@@ -301,6 +301,19 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
 </style>
+<!-- PWA -->
+<meta name="theme-color" content="#6c72ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FinanzasApp">
+<meta name="description" content="Control financiero personal. Ingresos, gastos, deudas y ahorros.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+  }
+</script>
 </head>
 <body>
 <!-- SPLASH -->
