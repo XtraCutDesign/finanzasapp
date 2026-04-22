@@ -300,20 +300,45 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+/* ── INFO MODAL ── */
+.info-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:50%;
+  border:1.5px solid var(--muted); color:var(--muted);
+  background:transparent; font-size:10px; font-weight:700;
+  cursor:pointer; flex-shrink:0; line-height:1;
+  vertical-align:middle; margin-left:6px;
+  transition:all 0.15s;
+}
+.info-btn:hover { border-color:var(--accent); color:var(--accent); }
+.info-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.55);
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999; padding:24px; opacity:0; pointer-events:none;
+  transition:opacity 0.2s;
+}
+.info-overlay.open { opacity:1; pointer-events:all; }
+.info-modal {
+  background:var(--surface); border-radius:18px;
+  padding:24px 20px; max-width:340px; width:100%;
+  box-shadow:0 12px 48px rgba(0,0,0,0.35);
+  transform:scale(0.95); transition:transform 0.2s;
+}
+.info-overlay.open .info-modal { transform:scale(1); }
+.info-modal-title {
+  font-size:15px; font-weight:700; color:var(--text);
+  margin-bottom:10px; display:flex; gap:8px; align-items:center;
+}
+.info-modal-body {
+  font-size:13px; color:var(--muted); line-height:1.65;
+}
+.info-modal-close {
+  width:100%; margin-top:18px; padding:11px;
+  background:var(--accent); color:white; border:none;
+  border-radius:10px; font-size:13px; font-weight:700;
+  cursor:pointer;
+}
 </style>
-<!-- PWA -->
-<meta name="theme-color" content="#6c72ff">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="FinanzasApp">
-<meta name="description" content="Control financiero personal. Ingresos, gastos, deudas y ahorros.">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
-  }
-</script>
 </head>
 <body>
 <!-- SPLASH -->
@@ -553,6 +578,14 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
 
 <!-- MAIN APP -->
 <div id="app" style="display:none">
+<!-- Info modal -->
+<div class="info-overlay" id="info-overlay" onclick="closeInfoModal()">
+  <div class="info-modal" onclick="event.stopPropagation()">
+    <div class="info-modal-title" id="info-modal-title">ℹ️ Información</div>
+    <div class="info-modal-body" id="info-modal-body"></div>
+    <button class="info-modal-close" onclick="closeInfoModal()">Entendido</button>
+  </div>
+</div>
   <div id="screen-container">
 
     <!-- ══ DASHBOARD ══ -->
@@ -585,6 +618,9 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         </div>
       </div>
 
+      <div style="padding: 0 16px 4px;" class="anim-up anim-delay-1">
+        <div id="year-scroll-dash" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;"></div>
+      </div>
       <div style="padding: 0 16px 8px;" class="anim-up anim-delay-1">
         <div class="month-scroll" id="month-scroll-dash"></div>
       </div>
@@ -615,6 +651,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         <p class="page-subtitle" id="mov-subtitle">Enero</p>
       </div>
       <div style="padding: 0 16px 12px;">
+        <div id="year-scroll-mov" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:4px;"></div>
         <div class="month-scroll" id="month-scroll-mov"></div>
       </div>
 
@@ -655,11 +692,14 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
           <option value="gasto">Solo gastos</option>
           <option value="ingreso">Solo ingresos</option>
         </select>
-        <button onclick="exportMovimientosExcel()"
+        <button onclick="openExportPanel()"
           style="background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:12px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">
-          📥 Excel
+          📥 Exportar
         </button>
       </div>
+
+      <!-- Export panel — rendered dynamically by openExportPanel() -->
+      <div id="export-panel" style="display:none;margin:0 16px 12px;"></div>
 
       <!-- Category filter — rendered dynamically -->
       <div style="padding: 0 16px 12px; overflow-x:auto; display:flex; gap:8px; scrollbar-width:none;" id="mov-cat-filters">
@@ -677,6 +717,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
       </div>
 
       <div style="padding: 0 16px 12px;">
+        <div id="year-scroll-anal" style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:4px;"></div>
         <div class="month-scroll" id="month-scroll-anal"></div>
       </div>
 
@@ -696,11 +737,11 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         </div>
       </div>
 
-      <div class="section-label">Presupuesto vs Real (mes seleccionado)</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Presupuesto vs Real (mes seleccionado)<button class="info-btn" onclick="showInfo('📊 Presupuesto vs Real','Compara cuánto tenías planificado gastar en cada categoría con lo que realmente has gastado este mes. Las barras rojas indican que te has pasado del presupuesto, las verdes que lo has respetado. Un pequeño desvío es normal; lo importante es la tendencia a lo largo del año.')">i</button></div>
       <div class="card" id="anal-vs-real"></div>
 
       <!-- Saldos table -->
-      <div class="section-label">Saldos mensuales</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Saldos mensuales<button class="info-btn" onclick="showInfo('📈 Saldos mensuales','Muestra tu saldo en cuenta al inicio y al final de cada mes. Si el saldo final es mayor que el inicial, ese mes has ahorrado dinero (en verde). Si es menor, has gastado más de lo que ingresaste (en rojo). Es una forma rápida de ver la evolución de tu cuenta a lo largo del año.')">i</button></div>
       <div class="card" id="anal-saldos"></div>
     </div>
 
@@ -729,7 +770,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
 
       <div id="debt-cards"></div>
 
-      <div class="section-label">Amortización mensual</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Amortización mensual<button class="info-btn" onclick="showInfo('💳 Amortización mensual','Muestra cuánto has pagado de cada deuda en cada mes. La amortización es la parte del pago que reduce el capital pendiente: cuanto más pagas cada mes, antes terminas de pagar y menos intereses pagas en total.')">i</button></div>
       <div class="card" id="debt-monthly-table"></div>
     </div>
 
@@ -760,10 +801,10 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
       <!-- Objetivo cards -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 0;" id="ahorro-obj-cards"></div>
 
-      <div class="section-label">Seguimiento mensual</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Seguimiento mensual<button class="info-btn" onclick="showInfo('📅 Seguimiento mensual','Muestra mes a mes cuánto has aportado a tu ahorro, los intereses que ha generado tu dinero y el total acumulado. El interés compuesto hace que tu dinero crezca cada vez más rápido: los intereses de cada mes se suman al capital y generan nuevos intereses el mes siguiente.')">i</button></div>
       <div class="card" id="ahorro-monthly-table"></div>
 
-      <div class="section-label">Configuración de ahorro</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Configuración de ahorro<button class="info-btn" onclick="showInfo('🎯 Objetivos de ahorro','El colchón de emergencia es un fondo que te permite cubrir imprevistos sin endeudarte. Se recomienda tener entre 3 y 6 meses de gastos guardados. El ahorro a corto plazo es para metas próximas (viajes, compras grandes). El ahorro a largo plazo es para objetivos futuros como la jubilación o una vivienda.')">i</button></div>
       <div class="card" id="cfg-aho-card">
         <div id="cfg-aho-view" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -789,7 +830,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         </div>
       </div>
 
-      <div class="section-label">Desglose del ahorro</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Desglose del ahorro<button class="info-btn" onclick="showInfo('💰 Desglose del ahorro','Tu ahorro total se divide en tres tipos: Efectivo/cuenta corriente (sin rentabilidad), Cuenta remunerada (genera intereses según el TIN que configures) e Inversiones (rentabilidad variable estimada). Los importes se calculan automáticamente de tus movimientos registrados.')">i</button></div>
       <div class="card" id="cfg-desglose-card">
         <p class="text-xs text-muted" style="margin-bottom:12px;">Los importes se calculan automáticamente de tus movimientos. Solo configura las rentabilidades.</p>
         <div id="cfg-desglose-view" style="display:none;">
@@ -814,7 +855,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         <div id="cfg-desglose-auto" style="margin-top:12px;"></div>
       </div>
 
-      <div class="section-label">Nombres de ingresos</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Nombres de ingresos<button class="info-btn" onclick="showInfo('💼 Nombres de ingresos','Personaliza cómo se llama cada fuente de ingreso en la app. Por ejemplo, puedes cambiar «Sueldo fijo neto» por «Nómina», o «Ingresos pasivos» por «Alquiler». Estos nombres aparecen en todas las pantallas y en los ficheros exportados.')">i</button></div>
       <div class="card" id="cfg-ingresos-card">
         <p class="text-xs text-muted" style="margin-bottom:12px;">Personaliza las etiquetas de tus fuentes de ingreso.</p>
         <div id="cfg-ing-view" style="display:none;">
@@ -841,7 +882,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
         </div><!-- /cfg-ing-edit -->
       </div>
 
-      <div class="section-label">Partidas presupuestarias</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Partidas presupuestarias<button class="info-btn" onclick="showInfo('📊 Partidas presupuestarias','Asigna un porcentaje de tus ingresos a cada categoría de gasto. La suma debe ser siempre 100%. Por ejemplo: 50% gastos básicos, 20% ocio, 15% deudas y 15% ahorro. Puedes guardar un presupuesto global o uno diferente para cada mes.')">i</button></div>
       <div class="card" id="cfg-budget-card">
         <p class="text-xs text-muted" style="margin-bottom:12px;">Ajusta los nombres y porcentajes. Debe sumar 100%.</p>
         <div id="cfg-budget-form"></div>
@@ -863,7 +904,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
       </div>
 
       <!-- Income labels -->
-      <div class="section-label">Nombres de ingresos</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Nombres de ingresos<button class="info-btn" onclick="showInfo('💼 Nombres de ingresos','Personaliza cómo se llama cada fuente de ingreso en la app. Por ejemplo, puedes cambiar «Sueldo fijo neto» por «Nómina», o «Ingresos pasivos» por «Alquiler». Estos nombres aparecen en todas las pantallas y en los ficheros exportados.')">i</button></div>
       <div class="card">
         <p class="text-xs text-muted" style="margin-bottom:12px;">Personaliza las etiquetas de tus fuentes de ingreso.</p>
         <div class="form-group">
@@ -882,7 +923,7 @@ body.theme-sky .hero-card { background: linear-gradient(135deg, #d3e5ff 0%, #bdd
       </div>
 
       <!-- Budget categories -->
-      <div class="section-label">Partidas presupuestarias</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:4px;">Partidas presupuestarias<button class="info-btn" onclick="showInfo('📊 Partidas presupuestarias','Asigna un porcentaje de tus ingresos a cada categoría de gasto. La suma debe ser siempre 100%. Por ejemplo: 50% gastos básicos, 20% ocio, 15% deudas y 15% ahorro. Puedes guardar un presupuesto global o uno diferente para cada mes.')">i</button></div>
       <div class="card" id="cfg2-budget-card">
         <p class="text-xs text-muted" style="margin-bottom:12px;">Renombra las partidas y ajusta los porcentajes. Debe sumar 100%.</p>
         <div id="cfg2-budget-form"></div>
@@ -1182,8 +1223,10 @@ function defaultState() {
     ahorro_inv_rent: 0,
     rent_anual: 0,
     rent_anual: 0,
-    monthly: Array.from({length:12}, () => ({txs:[], ingresos:{sueldo:0,extras:0,pasivos:0,otros:0}})),
+    monthly: Array.from({length:12}, () => ({txs:[], ingresos:{sueldo:0,extras:0,pasivos:0,otros:0}, budget_pct:null, budget_locked:false})),
     selectedMonth: 0,
+    selectedYear: new Date().getFullYear(),
+    archive: {},
     currentFilter: 'all',
   };
 }
@@ -1298,19 +1341,24 @@ function loadState() {
 // COMPUTED
 // ═══════════════════════════════════════════════════
 function totalIngresos(mi) {
-  const m = S.monthly[mi];
+  const m = getActiveMonthly()[mi];
+  if (!m) return 0;
   const txInc = m.txs.filter(t=>t.type==='ingreso').reduce((s,t)=>s+t.amount,0);
   const base = Object.values(m.ingresos).reduce((s,v)=>s+(v||0),0);
   return base + txInc;
 }
 
 function totalGastos(mi) {
-  return S.monthly[mi].txs.filter(t=>t.type==='gasto').reduce((s,t)=>s+t.amount,0);
+  const m = getActiveMonthly()[mi];
+  if (!m) return 0;
+  return m.txs.filter(t=>t.type==='gasto').reduce((s,t)=>s+t.amount,0);
 }
 
 function gatosByCat(mi) {
   const r = {};
-  S.monthly[mi].txs.filter(t=>t.type==='gasto').forEach(t=>{
+  const m = getActiveMonthly()[mi];
+  if (!m) return r;
+  m.txs.filter(t=>t.type==='gasto').forEach(t=>{
     r[t.cat] = (r[t.cat]||0) + t.amount;
   });
   return r;
@@ -1334,7 +1382,7 @@ function totalDeuda() {
 }
 
 function amortizadoByMonth(mi) {
-  const tx = S.monthly[mi].txs.filter(t=>t.type==='gasto'&&t.cat==='deudas');
+  const tx = getActiveMonthly()[mi]?.txs.filter(t=>t.type==='gasto'&&t.cat==='deudas') || [];
   const r = {};
   S.debts.forEach(d=>{ r[d.id]=0; });
   r['otras_deudas'] = 0;
@@ -1347,41 +1395,45 @@ function amortizadoByMonth(mi) {
 }
 
 function totalAhorroAcumulado(mi) {
-  // Base savings (no interest)
-  let acc = (S.ahorro_efectivo || 0) + (S.ahorro_cuenta || 0);
-
-  // Cuenta remunerada: compounds monthly with S.ahorro_tin
+  const monthly = getActiveMonthly();
+  let acc = (S.ahorro_ini || 0) + (S.ahorro_efectivo || 0) + (S.ahorro_cuenta || 0);
   let remBalance = S.ahorro_remunerado || 0;
   const tinMensual = (S.ahorro_tin || 0) / 100 / 12;
-
-  // Inversiones: compounds monthly with S.ahorro_inv_rent
   let invBalance = S.ahorro_inversiones || 0;
   const invMensual = (S.ahorro_inv_rent || 0) / 100 / 12;
 
   for (let i = 0; i <= mi; i++) {
-    const txs = S.monthly[i].txs;
-    // Plain ahorro movements
+    const txs = monthly[i]?.txs || [];
     acc += txs.filter(t => t.cat === 'ahorro').reduce((s,t) => s + t.amount, 0);
-    // Cuenta remunerada movements
     const remMes = txs.filter(t => t.cat === 'inversion' && t.subcat === 'cuenta_remunerada').reduce((s,t) => s + t.amount, 0);
-    // Other inversion movements
     const invMes = txs.filter(t => t.cat === 'inversion' && t.subcat !== 'cuenta_remunerada').reduce((s,t) => s + t.amount, 0);
-
-    // Apply monthly compound interest
     if (tinMensual > 0) remBalance = remBalance * (1 + tinMensual);
     if (invMensual > 0) invBalance = invBalance * (1 + invMensual);
     remBalance += remMes;
     invBalance += invMes;
   }
-
   return acc + remBalance + invBalance;
 }
 
 function budgetEuros() {
-  const tot = Object.values(S.ingresos).reduce((s,v)=>s+(v||0),0);
+  const mi = (S.selectedMonth !== undefined && S.selectedMonth !== null) ? S.selectedMonth : new Date().getMonth();
+  const tot = totalIngresos(mi);
+  const monthly = getActiveMonthly();
+  const pct = (monthly[mi] && monthly[mi].budget_pct) ? monthly[mi].budget_pct : S.budget_pct;
   const r = {};
-  Object.keys(S.budget_pct).forEach(k=>r[k]=(S.budget_pct[k]||0)*tot);
+  Object.keys(pct).forEach(k=>r[k]=(pct[k]||0)*tot);
   return r;
+}
+
+// Helper: get effective budget_pct for a given month
+function getBudgetPct(mi) {
+  return (S.monthly[mi] && S.monthly[mi].budget_pct) ? S.monthly[mi].budget_pct : S.budget_pct;
+}
+
+// Helper: get effective budget_locked for a given month
+function getBudgetLocked(mi) {
+  if (S.monthly[mi] && S.monthly[mi].budget_pct !== null) return S.monthly[mi].budget_locked || false;
+  return S.budget_locked || false;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1428,12 +1480,171 @@ function renderScreen(id) {
 // ═══════════════════════════════════════════════════
 // MONTH SELECTORS
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// MULTI-YEAR SUPPORT
+// ═══════════════════════════════════════════════════
+
+// Returns the monthly array for the currently viewed year
+function getActiveMonthly() {
+  const yr = S.selectedYear;
+  const curYear = S.activeYear || new Date().getFullYear();
+  if (yr !== curYear && S.archive && S.archive[yr]) {
+    return S.archive[yr].monthly;
+  }
+  return S.monthly;
+}
+
+// Build year pill selector for a container
+function buildYearScroll(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const curYear = S.activeYear || new Date().getFullYear();
+  const years = [curYear];
+  // Add archived years
+  if (S.archive) Object.keys(S.archive).map(Number).sort((a,b)=>b-a).forEach(y => { if (!years.includes(y)) years.push(y); });
+  // Only show selector if more than one year
+  if (years.length <= 1) {
+    el.innerHTML = `<span style="font-size:11px;font-weight:600;color:var(--muted);padding:4px 0;">${curYear}</span>`;
+    return;
+  }
+  el.innerHTML = years.map(y =>
+    `<button onclick="selectYear(${y})" style="flex-shrink:0;padding:5px 16px;border-radius:99px;border:1px solid ${y===S.selectedYear?'var(--accent)':'var(--border)'};background:${y===S.selectedYear?'var(--accent)':'var(--surface2)'};color:${y===S.selectedYear?'white':'var(--muted)'};font-size:12px;font-weight:700;cursor:pointer;">${y}</button>`
+  ).join('');
+}
+
+function selectYear(yr) {
+  S.selectedYear = yr;
+  saveState();
+  // Re-render all year scrolls and current screen
+  ['year-scroll-dash','year-scroll-mov','year-scroll-anal'].forEach(id => buildYearScroll(id));
+  renderScreen(currentScreen);
+}
+
+// Archive current year and start a new one
+function archiveCurrentYear() {
+  const curYear = S.activeYear || new Date().getFullYear();
+  const newYear = curYear + 1;
+  if (!confirm(`¿Cerrar ${curYear} y abrir ${newYear}?\n\nLos datos de ${curYear} quedarán archivados y accesibles. El nuevo año comenzará con tu saldo actual, deudas e inversiones al día de hoy.`)) return;
+
+  if (!S.archive) S.archive = {};
+  // Save current year to archive
+  S.archive[curYear] = {
+    monthly: S.monthly.map(m => ({...m, txs: [...m.txs]}))
+  };
+
+  // Carry over final balances to new year
+  const finalSaldo = getSaldoFinal(11); // saldo a 31/dic
+  const newIngresos = {...S.monthly[0].ingresos}; // keep income config
+
+  // Reset monthly for new year with carried-over saldo inicial
+  S.monthly = Array.from({length:12}, () => ({txs:[], ingresos:{...newIngresos}, budget_pct:null, budget_locked:false}));
+  S.saldo_inicial = finalSaldo;
+
+  // Carry over debt balances (capital_rest stays as-is, debts continue)
+  // Carry over savings base values from last month's accumulation
+  S.ahorro_ini = totalAhorroAcumulado(11);
+
+  S.activeYear = newYear;
+  S.selectedYear = newYear;
+  S.selectedMonth = 0;
+  saveState();
+  renderDashboard();
+  ['year-scroll-dash','year-scroll-mov','year-scroll-anal'].forEach(id => buildYearScroll(id));
+  showToast(`✅ ${curYear} archivado. Bienvenido a ${newYear} — saldo inicial: ${fmt(finalSaldo)}`);
+}
+
+// ═══════════════════════════════════════════════════
+// BACKUP / RESTORE
+// ═══════════════════════════════════════════════════
+function exportBackup() {
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const json = JSON.stringify(S, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `FinanzasApp_backup_${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 Copia de seguridad exportada');
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup || !backup.monthly || !Array.isArray(backup.monthly)) {
+        showToast('⚠️ Archivo no válido'); return;
+      }
+
+      const curYear = S.activeYear || new Date().getFullYear();
+      const backupYear = backup.activeYear || backup.selectedYear || curYear;
+
+      if (backupYear === curYear) {
+        // Same active year → restore everything, fully editable
+        if (!confirm(`El backup es del año en curso (${backupYear}).\n\n¿Restaurar todos los datos? Esto reemplazará tu información actual.`)) return;
+        S = backup;
+        if (!S.archive) S.archive = {};
+        saveState();
+        if (S.theme) applyTheme(S.theme);
+        closeProfile();
+        renderDashboard();
+        ['year-scroll-dash','year-scroll-mov','year-scroll-anal'].forEach(id => buildYearScroll(id));
+        showToast(`✅ Datos de ${backupYear} restaurados y editables`);
+      } else {
+        // Different year → ask user what to do
+        const makeActive = confirm(
+          `El backup es del año ${backupYear}.\n\n` +
+          `• Pulsa ACEPTAR para restaurarlo como año activo (editable)\n` +
+          `• Pulsa CANCELAR para añadirlo al historial (solo lectura)`
+        );
+        if (!S.archive) S.archive = {};
+        if (makeActive) {
+          // Make it the active year — archive current year first if it has data
+          const hasCurData = S.monthly.some(m => m.txs.length > 0);
+          if (hasCurData) {
+            S.archive[curYear] = { monthly: S.monthly.map(m => ({...m, txs:[...m.txs]})) };
+          }
+          S.monthly = backup.monthly;
+          S.activeYear = backupYear;
+          S.selectedYear = backupYear;
+          S.selectedMonth = backup.selectedMonth || 0;
+          saveState();
+          closeProfile();
+          renderDashboard();
+          ['year-scroll-dash','year-scroll-mov','year-scroll-anal'].forEach(id => buildYearScroll(id));
+          showToast(`✅ Año ${backupYear} restaurado como activo y editable`);
+        } else {
+          // Add to archive as read-only
+          S.archive[backupYear] = { monthly: backup.monthly };
+          saveState();
+          ['year-scroll-dash','year-scroll-mov','year-scroll-anal'].forEach(id => buildYearScroll(id));
+          showToast(`📦 Año ${backupYear} añadido al historial (solo lectura)`);
+        }
+      }
+    } catch(err) {
+      showToast('⚠️ Error al leer el archivo: ' + err.message);
+    }
+    // Reset file input so same file can be reimported
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 function buildMonthScroll(containerId) {
   const el = document.getElementById(containerId);
   if(!el) return;
+  const monthly = getActiveMonthly();
   el.innerHTML = MONTHS_ES.map((m,i)=>`
     <button class="month-chip ${i===S.selectedMonth?'active':''}" onclick="selectMonth(${i},'${containerId}')">${m}</button>
   `).join('');
+  // Also build matching year scroll
+  const yearId = containerId.replace('month-scroll','year-scroll');
+  buildYearScroll(yearId);
 }
 
 function selectMonth(mi, fromId) {
@@ -1511,12 +1722,13 @@ function renderDashboard() {
 
   // Recent txs (last 8) — include both gastos and base ingresos, all tappable
   const il = S.ing_labels || {};
-  const ingBase = S.monthly[mi].ingresos;
+  const _activeMonthly = getActiveMonthly();
+  const ingBase = _activeMonthly[mi].ingresos;
   const ingEntries = [];
   Object.entries({sueldo:il.sueldo||'Sueldo fijo neto', extras:il.extras||'Extras / bonus', pasivos:il.pasivos||'Ingresos pasivos'}).forEach(([k,lbl])=>{
     if((ingBase[k]||0)>0) ingEntries.push({type:'ingreso',cat:'ingreso',subcat:k,amount:ingBase[k],day:1,desc:lbl,_base:true,_baseKey:k});
   });
-  const combinedTxs = [...S.monthly[mi].txs, ...ingEntries].sort((a,b)=>b.day-a.day).slice(0,8);
+  const combinedTxs = [..._activeMonthly[mi].txs, ...ingEntries].sort((a,b)=>b.day-a.day).slice(0,8);
   const recEl = document.getElementById('dash-recent-txs');
   if (!combinedTxs.length) {
     recEl.innerHTML = '<div class="tx-row"><div class="text-sm text-muted" style="padding:8px 0;">Sin movimientos este mes.</div></div>';
@@ -1528,7 +1740,7 @@ function renderDashboard() {
       const icon = isInc ? '💰' : (m?m.label.split(' ')[0]:'💳');
       const bg = isInc ? 'var(--green-dim)' : (m?m.bg:'var(--surface2)');
       const catLabel = isInc ? (il[tx.subcat]||'Ingreso') : (m?getCatLabel(tx.cat):'');
-      const txIdx = isBase ? -1 : S.monthly[mi].txs.indexOf(tx);
+      const txIdx = isBase ? -1 : _activeMonthly[mi].txs.indexOf(tx);
       const clickHandler = isBase
         ? `onclick="openBaseIngresoEdit(${mi},'${tx._baseKey}',${tx.amount},'${tx.desc}')"`
         : `onclick="openTxDetail(${mi},${txIdx},'${tx.type}')"`;
@@ -1627,10 +1839,11 @@ function renderMovimientos() {
 
   // ALL transactions — real txs only (base ingresos are shown if stored as txs)
   const il = S.ing_labels || {};
-  let allTxs = [...S.monthly[mi].txs];
+  const _activeMov = getActiveMonthly();
+  let allTxs = [..._activeMov[mi].txs];
 
   // Also show base ingresos from the ingresos object as synthetic (display only, not in txs array)
-  const ingBase = S.monthly[mi].ingresos;
+  const ingBase = _activeMov[mi].ingresos;
   const synthKeys = { sueldo: il.sueldo||'Sueldo fijo neto', extras: il.extras||'Extras / bonus', pasivos: il.pasivos||'Ingresos pasivos', otros: 'Otros ingresos' };
   const syntheticEntries = [];
   Object.entries(synthKeys).forEach(([k, label]) => {
@@ -1704,7 +1917,7 @@ function renderMovimientos() {
       const icon = isInc ? '💰' : (m ? m.label.split(' ')[0] : '💳');
       const bg = isInc ? 'var(--green-dim)' : (m ? m.bg : 'var(--surface2)');
       const catLabel = isInc ? (il[t.subcat]||'Ingreso') : getCatLabel(t.cat);
-      const txIdx = isBase ? -1 : S.monthly[mi].txs.indexOf(t);
+      const txIdx = isBase ? -1 : _activeMov[mi].txs.indexOf(t);
       // All real txs are clickable; base ingresos show edit sheet for amount change
       const clickHandler = isBase
         ? `onclick="openBaseIngresoEdit(${mi},'${t._baseKey}',${t.amount},'${t.desc}')"`
@@ -1784,17 +1997,17 @@ function renderAnalisis() {
 
   // Saldos table
   document.getElementById('anal-saldos').innerHTML = `
-    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 12px;font-size:10px;color:var(--muted);margin-bottom:8px;">
-      <div>Mes</div><div>Inicial</div><div>Final</div>
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 12px;font-size:10px;color:var(--muted);margin-bottom:8px;padding:0 2px;">
+      <div>Mes</div><div>Saldo inicial</div><div>Saldo final</div>
     </div>` +
   MONTHS_ES.map((m,i)=>{
-    const ini=getSaldoInicial(i); const fin=getSaldoFinal(i);
-    const active=i===mi;
-    return `<div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);${active?'background:var(--surface2);border-radius:6px;padding:5px 6px;':''}"
-    >
+    const ini = getSaldoInicial(i);
+    const fin = getSaldoFinal(i);
+    const active = i === mi;
+    return `<div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);${active?'background:var(--surface2);border-radius:6px;padding:5px 6px;':''}">
       <div style="font-size:11px;font-weight:${active?600:400};color:${active?'var(--accent)':'var(--text)'};">${m.slice(0,3)}</div>
       <div style="font-size:12px;font-weight:500;">${fmt(ini)}</div>
-      <div style="font-size:12px;font-weight:600;color:${fin>=0?'var(--green)':'var(--red)'};">${fmt(fin)}</div>
+      <div style="font-size:12px;font-weight:600;color:${fin>=ini?'var(--green)':'var(--red)'};">${fmt(fin)}</div>
     </div>`;
   }).join('');
 }
@@ -1894,7 +2107,7 @@ function renderDeudas() {
     if (!total && i > S.selectedMonth) return '';
     return `<div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 8px;padding:5px 2px;border-bottom:1px solid var(--border);${active?'background:var(--surface2);border-radius:6px;padding:5px 6px;':''}">
       <div style="font-size:11px;font-weight:${active?600:400};color:${active?'var(--accent)':'var(--text)'};">${m.slice(0,3)}</div>
-      <div style="font-size:12px;">${total>0?Object.entries(a).filter(([,v])=>v>0).map(([k,v])=>k+' '+fmt(v)).join(', '):'—'}</div>
+      <div style="font-size:12px;">${total>0?Object.entries(a).filter(([,v])=>v>0).map(([k,v])=>{ const d=S.debts.find(x=>x.id===k); return (d?d.name:k)+' '+fmt(v); }).join(', '):'—'}</div>
       <div style="font-size:12px;font-weight:600;color:${total>0?'var(--red)':'var(--muted)'};">${total>0?fmt(total):'—'}</div>
     </div>`;
   }).join('');
@@ -2244,7 +2457,7 @@ function renderAhorro() {
   let plainAcc = (S.ahorro_efectivo || 0) + (S.ahorro_cuenta || 0);
 
   html += MONTHS_ES.map((m,i) => {
-    const txs = S.monthly[i].txs;
+    const txs = getActiveMonthly()[i]?.txs || [];
     // Aportaciones de este mes
     const ahorroMes = txs.filter(t => t.cat === 'ahorro').reduce((s,t) => s + t.amount, 0);
     const remMes    = txs.filter(t => t.cat === 'inversion' && t.subcat === 'cuenta_remunerada').reduce((s,t) => s + t.amount, 0);
@@ -2291,9 +2504,9 @@ function renderAhorro() {
   // Auto-calculated breakdown from txs
   const autoPanel = document.getElementById('cfg-desglose-auto');
   if (autoPanel) {
-    const totalRem = S.monthly.reduce((s,m) => s + m.txs.filter(t=>t.cat==='inversion'&&t.subcat==='cuenta_remunerada').reduce((ss,t)=>ss+t.amount,0), 0);
-    const totalAhorro = S.monthly.reduce((s,m) => s + m.txs.filter(t=>t.cat==='ahorro').reduce((ss,t)=>ss+t.amount,0), 0);
-    const totalInv = S.monthly.reduce((s,m) => s + m.txs.filter(t=>t.cat==='inversion'&&t.subcat!=='cuenta_remunerada').reduce((ss,t)=>ss+t.amount,0), 0);
+    const totalRem = getActiveMonthly().reduce((s,m) => s + (m?.txs||[]).filter(t=>t.cat==='inversion'&&t.subcat==='cuenta_remunerada').reduce((ss,t)=>ss+t.amount,0), 0);
+    const totalAhorro = getActiveMonthly().reduce((s,m) => s + (m?.txs||[]).filter(t=>t.cat==='ahorro').reduce((ss,t)=>ss+t.amount,0), 0);
+    const totalInv = getActiveMonthly().reduce((s,m) => s + (m?.txs||[]).filter(t=>t.cat==='inversion'&&t.subcat!=='cuenta_remunerada').reduce((ss,t)=>ss+t.amount,0), 0);
     autoPanel.innerHTML = `
       <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
         <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Importes acumulados (de movimientos)</div>
@@ -2340,25 +2553,39 @@ function refreshIngresoDropdown() {
 function renderBudgetConfigForm() {
   const form = document.getElementById('cfg-budget-form');
   if (!form) return;
-  const locked = S.budget_locked === true;
+  const mi = S.selectedMonth;
+  const locked = getBudgetLocked(mi);
   const bl = S.budget_labels || {};
+  const isMonthSpecific = !!(S.monthly[mi] && S.monthly[mi].budget_pct);
+  const activePct = getBudgetPct(mi);
 
   // Header with edit button when locked
   const btnArea = document.getElementById('cfg-budget-btn-area');
   if (btnArea) {
+    const monthTag = `<span style="background:var(--accent);color:white;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;">${MONTHS_ES[mi]}</span>`;
+    const sourceTag = isMonthSpecific
+      ? `<span style="color:var(--accent);font-size:11px;font-weight:600;">📅 Específico de ${MONTHS_ES[mi]}</span>`
+      : `<span style="color:var(--muted);font-size:11px;">🌐 Presupuesto global</span>`;
     btnArea.innerHTML = locked
-      ? `<button class="btn btn-ghost" onclick="unlockBudgetConfig()" style="width:auto;padding:10px 20px;font-size:14px;">✏️ Editar presupuesto</button>`
-      : `<div id="cfg-budget-warn" style="margin:8px 0;" class="pill yellow">Cargando...</div>
-         <button class="btn btn-primary" onclick="saveBudgetConfig()" style="margin-top:8px;">💾 Guardar y bloquear</button>`;
+      ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">${monthTag}${sourceTag}</div>
+         <div style="display:flex;gap:8px;">
+           <button class="btn btn-ghost" onclick="unlockBudgetConfig()" style="flex:1;padding:10px;font-size:13px;">✏️ Editar</button>
+           ${isMonthSpecific ? `<button onclick="resetMonthBudget()" style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;">↩ Usar global</button>` : ''}
+         </div>`
+      : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">${monthTag}${sourceTag}</div>
+         <div id="cfg-budget-warn" style="margin:8px 0;" class="pill yellow">Cargando...</div>
+         <div style="display:flex;gap:8px;margin-top:8px;">
+           <button class="btn btn-primary" onclick="saveBudgetConfig('month')" style="flex:1;padding:10px;font-size:12px;">💾 Solo ${MONTHS_ES[mi]}</button>
+           <button onclick="saveBudgetConfig('all')" style="flex:1;background:var(--surface3);color:var(--text);border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;">🌐 Todos los meses</button>
+         </div>`;
   }
 
   form.innerHTML = BUDGET_CATS.map(c => {
     const label = bl[c.k] || getBudgetLabel(c.k);
-    const pct = Math.round((S.budget_pct[c.k]||0)*100);
+    const pct = Math.round((activePct[c.k]||0)*100);
     const fillColor = pct === 0 ? 'var(--muted)' : 'var(--accent)';
 
     if (locked) {
-      // Locked view — show shaded filled bars, read-only
       return `<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:8px;opacity:0.85;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span style="font-size:13px;font-weight:600;color:var(--text);">${label}</span>
@@ -2370,7 +2597,6 @@ function renderBudgetConfigForm() {
       </div>`;
     }
 
-    // Editable view — number input only, visual bar auto-fills
     return `<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
         <input class="form-input" id="cfg-blbl-${c.k}" value="${label}"
@@ -2401,15 +2627,13 @@ function syncCfgRange(k, v) { updateCfgBudgetBar(k); checkCfgBudgetSum(); }
 function syncCfgNum(k, v) { updateCfgBudgetBar(k); checkCfgBudgetSum(); }
 
 function unlockBudgetConfig() {
-  S.budget_locked = false;
-  saveState();
-  renderBudgetConfigForm();
-  // Re-render warn/button area
-  const btnArea = document.getElementById('cfg-budget-btn-area');
-  if (btnArea) {
-    btnArea.innerHTML = `<div id="cfg-budget-warn" style="margin:8px 0;" class="pill yellow">Cargando...</div>
-      <button class="btn btn-primary" onclick="saveBudgetConfig()" style="margin-top:8px;">💾 Guardar y bloquear</button>`;
+  const mi = S.selectedMonth;
+  if (S.monthly[mi] && S.monthly[mi].budget_pct) {
+    S.monthly[mi].budget_locked = false;
+  } else {
+    S.budget_locked = false;
   }
+  saveState();
   renderBudgetConfigForm();
 }
 
@@ -2604,18 +2828,33 @@ function saveSubcats(cat) {
 function renderBudgetConfigForm2() {
   const form = document.getElementById('cfg2-budget-form');
   if (!form) return;
-  const locked = S.budget_locked === true;
+  const mi = S.selectedMonth;
+  const locked = getBudgetLocked(mi);
   const bl = S.budget_labels || {};
+  const isMonthSpecific = !!(S.monthly[mi] && S.monthly[mi].budget_pct);
+  const activePct = getBudgetPct(mi);
   const btnArea = document.getElementById('cfg2-budget-btn-area');
   if (btnArea) {
+    const monthTag = `<span style="background:var(--accent);color:white;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;">${MONTHS_ES[mi]}</span>`;
+    const sourceTag = isMonthSpecific
+      ? `<span style="color:var(--accent);font-size:11px;font-weight:600;">📅 Específico de ${MONTHS_ES[mi]}</span>`
+      : `<span style="color:var(--muted);font-size:11px;">🌐 Presupuesto global</span>`;
     btnArea.innerHTML = locked
-      ? `<button class="btn btn-ghost" onclick="unlockBudgetConfig2()" style="width:auto;padding:10px 20px;font-size:14px;">✏️ Editar presupuesto</button>`
-      : `<div id="cfg2-budget-warn" style="margin:8px 0;" class="pill yellow">Cargando...</div>
-         <button class="btn btn-primary" onclick="saveBudgetConfig2()" style="margin-top:8px;">💾 Guardar y bloquear</button>`;
+      ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">${monthTag}${sourceTag}</div>
+         <div style="display:flex;gap:8px;">
+           <button class="btn btn-ghost" onclick="unlockBudgetConfig2()" style="flex:1;padding:10px;font-size:13px;">✏️ Editar</button>
+           ${isMonthSpecific ? `<button onclick="resetMonthBudget2()" style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;">↩ Usar global</button>` : ''}
+         </div>`
+      : `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">${monthTag}${sourceTag}</div>
+         <div id="cfg2-budget-warn" style="margin:8px 0;" class="pill yellow">Cargando...</div>
+         <div style="display:flex;gap:8px;margin-top:8px;">
+           <button class="btn btn-primary" onclick="saveBudgetConfig2('month')" style="flex:1;padding:10px;font-size:12px;">💾 Solo ${MONTHS_ES[mi]}</button>
+           <button onclick="saveBudgetConfig2('all')" style="flex:1;background:var(--surface3);color:var(--text);border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;">🌐 Todos los meses</button>
+         </div>`;
   }
   form.innerHTML = BUDGET_CATS.map(c => {
     const label = bl[c.k] || getBudgetLabel(c.k);
-    const pct = Math.round((S.budget_pct[c.k]||0)*100);
+    const pct = Math.round((activePct[c.k]||0)*100);
     if (locked) {
       return `<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -2677,21 +2916,54 @@ function checkCfgBudgetSum2() {
 }
 
 function unlockBudgetConfig2() {
-  S.budget_locked = false; saveState(); renderBudgetConfigForm2();
+  const mi = S.selectedMonth;
+  if (S.monthly[mi] && S.monthly[mi].budget_pct) {
+    S.monthly[mi].budget_locked = false;
+  } else {
+    S.budget_locked = false;
+  }
+  saveState(); renderBudgetConfigForm2();
 }
 
-function saveBudgetConfig2() {
+function saveBudgetConfig2(scope) {
   if (checkCfgBudgetSum2() !== 100) { showToast('El presupuesto debe sumar exactamente 100%'); return; }
   if (!S.budget_labels) S.budget_labels = {};
+
+  const newPct = {};
   BUDGET_CATS.forEach(c => {
     S.budget_labels[c.k] = document.getElementById('cfg2-blbl-'+c.k)?.value || getBudgetLabel(c.k);
-    S.budget_pct[c.k] = (parseInt(document.getElementById('cfg2-bpct-'+c.k)?.value)||0) / 100;
+    newPct[c.k] = (parseInt(document.getElementById('cfg2-bpct-'+c.k)?.value)||0) / 100;
   });
-  S.budget_locked = true; saveState();
+
+  const mi = S.selectedMonth;
+  if (scope === 'month') {
+    if (!S.monthly[mi]) S.monthly[mi] = {txs:[], ingresos:{sueldo:0,extras:0,pasivos:0,otros:0}};
+    S.monthly[mi].budget_pct = newPct;
+    S.monthly[mi].budget_locked = true;
+    showToast(`✓ Presupuesto de ${MONTHS_ES[mi]} guardado`);
+  } else {
+    Object.assign(S.budget_pct, newPct);
+    S.budget_locked = true;
+    showToast('✓ Presupuesto global guardado');
+  }
+
+  saveState();
   renderDashboard();
   if (currentScreen === 'analisis') renderAnalisis();
+  if (currentScreen === 'ahorro') renderAhorro();
   renderBudgetConfigForm2();
-  showToast('Presupuesto guardado ✓');
+}
+
+function resetMonthBudget2() {
+  const mi = S.selectedMonth;
+  if (S.monthly[mi]) {
+    S.monthly[mi].budget_pct = null;
+    S.monthly[mi].budget_locked = false;
+  }
+  saveState();
+  renderDashboard();
+  renderBudgetConfigForm2();
+  showToast(`↩ ${MONTHS_ES[mi]} vuelve al presupuesto global`);
 }
 
 function saveIngresosConfig2() {
@@ -2727,21 +2999,50 @@ function unlockIngresosConfig() {
   document.getElementById('cfg-ing-view').style.display = 'none';
 }
 
-function saveBudgetConfig() {
+function saveBudgetConfig(scope) {
+  // scope: 'month' = save only for current month, 'all' = save globally (default)
   if (checkCfgBudgetSum() !== 100) { showToast('El presupuesto debe sumar exactamente 100%'); return; }
   if (!S.budget_labels) S.budget_labels = {};
+
+  const newPct = {};
   BUDGET_CATS.forEach(c => {
     S.budget_labels[c.k] = document.getElementById('cfg-blbl-'+c.k)?.value || getBudgetLabel(c.k);
-    S.budget_pct[c.k] = (parseInt(document.getElementById('cfg-bpct-'+c.k)?.value)||0) / 100;
+    newPct[c.k] = (parseInt(document.getElementById('cfg-bpct-'+c.k)?.value)||0) / 100;
   });
-  S.budget_locked = true;
+
+  const mi = S.selectedMonth;
+  if (scope === 'month') {
+    // Save only to this month
+    if (!S.monthly[mi]) S.monthly[mi] = {txs:[], ingresos:{sueldo:0,extras:0,pasivos:0,otros:0}};
+    S.monthly[mi].budget_pct = newPct;
+    S.monthly[mi].budget_locked = true;
+    showToast(`✓ Presupuesto de ${MONTHS_ES[mi]} guardado`);
+  } else {
+    // Save globally (all months that don't have their own)
+    Object.assign(S.budget_pct, newPct);
+    S.budget_locked = true;
+    showToast('✓ Presupuesto global guardado');
+  }
+
   saveState();
-  // Update all screens that show category labels/budgets
   renderDashboard();
   if (currentScreen === 'analisis') renderAnalisis();
   if (currentScreen === 'movimientos') renderMovimientos();
+  if (currentScreen === 'ahorro') renderAhorro();
   renderBudgetConfigForm();
-  showToast('Presupuesto guardado y bloqueado ✓');
+}
+
+function resetMonthBudget() {
+  // Remove month-specific budget, revert to global
+  const mi = S.selectedMonth;
+  if (S.monthly[mi]) {
+    S.monthly[mi].budget_pct = null;
+    S.monthly[mi].budget_locked = false;
+  }
+  saveState();
+  renderDashboard();
+  renderBudgetConfigForm();
+  showToast(`↩ ${MONTHS_ES[mi]} vuelve al presupuesto global`);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2908,83 +3209,522 @@ function deleteTx(mi, txIdx) {
 // ═══════════════════════════════════════════════════
 // EXCEL EXPORT
 // ═══════════════════════════════════════════════════
-function exportMovimientosExcel() {
+// ═══════════════════════════════════════════════════
+// EXCEL EXPORT — dynamic panel with preview & confirm
+// ═══════════════════════════════════════════════════
+
+function openExportPanel() {
+  const panel = document.getElementById('export-panel');
+  if (!panel) return;
+  if (panel.style.display !== 'none') { closeExportPanel(); return; }
+  panel.style.display = 'block';
+  renderExportPanel('main');
+}
+
+function closeExportPanel() {
+  const panel = document.getElementById('export-panel');
+  if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+}
+
+function renderExportPanel(view, opts) {
+  const panel = document.getElementById('export-panel');
+  if (!panel) return;
+  const currentYear = new Date().getFullYear();
+  const appYear = S.year || currentYear;
   const mi = S.selectedMonth;
-  const il = S.ing_labels || {};
 
-  // Read current active filters from the UI (same logic as renderMovimientos)
-  const typeFilter = document.getElementById('mov-type-filter')?.value || 'all';
-  const searchQ = (document.getElementById('mov-search')?.value || '').toLowerCase().trim();
+  const css = `background:var(--surface2);border-radius:14px;padding:14px;`;
+  const btnBase = `border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;width:100%;`;
+  const btnAccent = `background:var(--accent);color:white;`;
+  const btnSurface = `background:var(--surface3);color:var(--text);`;
+  const btnGreen = `background:var(--green-dim);color:var(--green);border:1px solid var(--green);`;
 
-  // Build the full list including base ingresos (same as renderMovimientos)
-  const ingBase = S.monthly[mi].ingresos;
-  const synthKeys = { sueldo: il.sueldo||'Sueldo fijo neto', extras: il.extras||'Extras / bonus', pasivos: il.pasivos||'Ingresos pasivos', otros: 'Otros ingresos' };
-  const syntheticEntries = [];
-  Object.entries(synthKeys).forEach(([k, label]) => {
-    if ((ingBase[k]||0) > 0) syntheticEntries.push({ type:'ingreso', cat:'ingreso', subcat:k, amount:ingBase[k], day:1, desc:label });
-  });
+  // Helper: days dropdown 1-31
+  const dayOpts = (sel) => Array.from({length:31},(_,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${i+1}</option>`).join('');
+  const monthOpts = (sel) => MONTHS_ES.map((m,i)=>`<option value="${i}" ${i===sel?'selected':''}>${m}</option>`).join('');
 
-  let allTxs = [...S.monthly[mi].txs, ...syntheticEntries];
+  if (view === 'main') {
+    panel.innerHTML = `<div style="${css}">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">📥 Exportar a Excel — ¿Qué periodo?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <button onclick="renderExportPanel('month')" style="${btnBase}${btnAccent}">📅 Mes</button>
+        <button onclick="renderExportPanel('trimestre')" style="${btnBase}${btnSurface}">📆 Trimestre</button>
+        <button onclick="renderExportPanel('year')" style="${btnBase}${btnSurface}">📊 Año completo</button>
+        <button onclick="renderExportPanel('custom')" style="${btnBase}${btnSurface}">🗓 Rango manual</button>
+      </div>
+      <button onclick="closeExportPanel()" style="${btnBase}background:none;color:var(--muted);">Cancelar</button>
+    </div>`;
 
-  // Apply same filters as the screen
-  if (typeFilter !== 'all') allTxs = allTxs.filter(t => t.type === typeFilter);
-  if (activeFilter !== 'all') allTxs = allTxs.filter(t => t.cat === activeFilter || (activeFilter==='ingreso' && t.type==='ingreso'));
-  if (searchQ) {
-    allTxs = allTxs.filter(t => {
-      const fields = [t.desc||'', t.notes||'', getCatLabel(t.cat), getSubcatLabel(t.cat, t.subcat), String(t.amount), String(t.day)].join(' ').toLowerCase();
-      return fields.includes(searchQ);
+  } else if (view === 'month') {
+    panel.innerHTML = `<div style="${css}">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📅 Exportar mes</div>
+      <select id="exp-month-sel" class="form-input" style="margin-bottom:10px;" onchange="updateExportPreview('month')">${monthOpts(mi)}</select>
+      <div id="exp-preview" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="renderExportPanel('main')" style="${btnBase}${btnSurface}flex:0 0 auto;width:auto;padding:10px 16px;">← Atrás</button>
+        <button onclick="doExport('month')" style="${btnBase}${btnGreen}flex:1;">📥 Descargar</button>
+      </div>
+    </div>`;
+    updateExportPreview('month');
+
+  } else if (view === 'trimestre') {
+    const qOpts = ['Q1 — Enero, Febrero, Marzo','Q2 — Abril, Mayo, Junio','Q3 — Julio, Agosto, Septiembre','Q4 — Octubre, Noviembre, Diciembre']
+      .map((l,i)=>`<option value="${i}" ${Math.floor(mi/3)===i?'selected':''}>${l}</option>`).join('');
+    panel.innerHTML = `<div style="${css}">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📆 Exportar trimestre</div>
+      <select id="exp-q-sel" class="form-input" style="margin-bottom:10px;" onchange="updateExportPreview('trimestre')">${qOpts}</select>
+      <div id="exp-preview" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="renderExportPanel('main')" style="${btnBase}${btnSurface}flex:0 0 auto;width:auto;padding:10px 16px;">← Atrás</button>
+        <button onclick="doExport('trimestre')" style="${btnBase}${btnGreen}flex:1;">📥 Descargar</button>
+      </div>
+    </div>`;
+    updateExportPreview('trimestre');
+
+  } else if (view === 'year') {
+    const curYear = S.activeYear || new Date().getFullYear();
+    const availableYears = [curYear];
+    if (S.archive) Object.keys(S.archive).map(Number).sort((a,b)=>b-a).forEach(y => { if (!availableYears.includes(y)) availableYears.push(y); });
+    const selYear = S.selectedYear || curYear;
+    const yearOpts = availableYears.map(y => `<option value="${y}" ${y===selYear?'selected':''}>${y}${y===curYear?' (año actual)':' (archivado)'}</option>`).join('');
+    panel.innerHTML = `<div style="${css}">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📊 Exportar año completo</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;">AÑO A EXPORTAR</div>
+      <select id="exp-year-sel" class="form-input" style="margin-bottom:10px;font-size:15px;font-weight:700;" onchange="updateExportPreview('year')">
+        ${yearOpts}
+      </select>
+      <div id="exp-preview" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="renderExportPanel('main')" style="${btnBase}${btnSurface}flex:0 0 auto;width:auto;padding:10px 16px;">← Atrás</button>
+        <button onclick="doExport('year')" style="${btnBase}${btnGreen}flex:1;">📥 Descargar</button>
+      </div>
+    </div>`;
+    updateExportPreview('year');
+
+  } else if (view === 'custom') {
+    const curYear = S.activeYear || new Date().getFullYear();
+    const availYears = [curYear];
+    if (S.archive) Object.keys(S.archive).map(Number).sort((a,b)=>b-a).forEach(y=>{ if(!availYears.includes(y)) availYears.push(y); });
+    const yearOpts = availYears.map(y=>`<option value="${y}">${y}${y===curYear?' (actual)':' (archivado)'}</option>`).join('');
+    panel.innerHTML = `<div style="${css}">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">🗓 Rango manual — día exacto</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;">AÑO</div>
+      <select id="exp-custom-year" class="form-input" style="margin-bottom:10px;font-weight:700;" onchange="updateExportPreview('custom')">${yearOpts}</select>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;">DESDE</div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px;margin-bottom:10px;">
+        <select id="exp-fd" class="form-input" style="padding:8px;" onchange="updateExportPreview('custom')">${dayOpts(1)}</select>
+        <select id="exp-fm" class="form-input" style="padding:8px;" onchange="updateExportPreview('custom')">${monthOpts(0)}</select>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;">HASTA</div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px;margin-bottom:10px;">
+        <select id="exp-td" class="form-input" style="padding:8px;" onchange="updateExportPreview('custom')">${dayOpts(31)}</select>
+        <select id="exp-tm" class="form-input" style="padding:8px;" onchange="updateExportPreview('custom')">${monthOpts(11)}</select>
+      </div>
+      <div id="exp-preview" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="renderExportPanel('main')" style="${btnBase}${btnSurface}flex:0 0 auto;width:auto;padding:10px 16px;">← Atrás</button>
+        <button onclick="doExport('custom')" style="${btnBase}${btnGreen}flex:1;">📥 Descargar</button>
+      </div>
+    </div>`;
+    updateExportPreview('custom');
+  }
+}
+
+function updateExportPreview(mode) {
+  const previewEl = document.getElementById('exp-preview');
+  if (!previewEl) return;
+  const mi = S.selectedMonth;
+
+  let fromMonth, toMonth, fromDay = 1, toDay = 31;
+
+  if (mode === 'month') {
+    fromMonth = toMonth = parseInt(document.getElementById('exp-month-sel')?.value ?? mi);
+  } else if (mode === 'trimestre') {
+    const q = parseInt(document.getElementById('exp-q-sel')?.value ?? Math.floor(mi/3));
+    fromMonth = q * 3; toMonth = Math.min(fromMonth + 2, 11);
+  } else if (mode === 'year') {
+    fromMonth = 0; toMonth = 11;
+  } else if (mode === 'custom') {
+    fromMonth = parseInt(document.getElementById('exp-fm')?.value ?? 0);
+    toMonth   = parseInt(document.getElementById('exp-tm')?.value ?? 11);
+    fromDay   = parseInt(document.getElementById('exp-fd')?.value ?? 1);
+    toDay     = parseInt(document.getElementById('exp-td')?.value ?? 31);
+    if (fromMonth > toMonth || (fromMonth === toMonth && fromDay > toDay)) {
+      previewEl.innerHTML = `<div style="background:var(--red-dim);color:var(--red);border-radius:8px;padding:8px;font-size:12px;">⚠️ La fecha inicial debe ser anterior a la final</div>`;
+      return;
+    }
+  }
+
+  // Count filtered transactions — use correct year's data
+  const selectedYear = parseInt(document.getElementById('exp-year-sel')?.value || '') || S.selectedYear || (S.activeYear || new Date().getFullYear());
+  const curYear = S.activeYear || new Date().getFullYear();
+
+  // For custom mode, use the specific year selector
+  const customYear = parseInt(document.getElementById('exp-custom-year')?.value || '') || curYear;
+  const previewMonthly = (mode === 'year' && selectedYear !== curYear && S.archive?.[selectedYear])
+    ? S.archive[selectedYear].monthly
+    : (mode === 'custom' && customYear !== curYear && S.archive?.[customYear])
+      ? S.archive[customYear].monthly
+      : getActiveMonthly();
+
+  let count = 0, totalInc = 0, totalGas = 0;
+  for (let i = fromMonth; i <= toMonth; i++) {
+    const txs = previewMonthly[i]?.txs || [];
+    const minDay = (i === fromMonth) ? fromDay : 1;
+    const maxDay = (i === toMonth)   ? toDay   : 31;
+    txs.filter(t => t.day >= minDay && t.day <= maxDay).forEach(t => {
+      count++;
+      if (t.type==='ingreso') totalInc+=t.amount; else totalGas+=t.amount;
     });
   }
 
-  // Sort same as screen
-  allTxs = allTxs.sort((a,b) => b.day - a.day);
+  const dayLabel = mode === 'custom'
+    ? `${fromDay} ${MONTHS_ES[fromMonth]} ${customYear} → ${toDay} ${MONTHS_ES[toMonth]} ${customYear}`
+    : mode === 'year'
+      ? `Año completo ${selectedYear}`
+      : (fromMonth === toMonth ? MONTHS_ES[fromMonth] : `${MONTHS_ES[fromMonth]} – ${MONTHS_ES[toMonth]}`);
 
-  const rows = [['Dia', 'Mes', 'Tipo', 'Categoria', 'Subcategoria', 'Descripcion', 'Importe (EUR)']];
-  allTxs.forEach(t => {
-    const isInc = t.type === 'ingreso';
-    // Strip emoji from category labels for clean Excel output
-    const catClean = getCatLabel(t.cat).replace(/\p{Emoji_Presentation}\s*/gu, '').replace(/^\s+/, '');
-    const subcatClean = isInc ? (il[t.subcat] || t.subcat || '') : getSubcatLabel(t.cat, t.subcat);
-    const descClean = (t.desc || '').replace(/[^\w\s\-,.áéíóúüñÁÉÍÓÚÜÑ]/gu, '').trim();
-    rows.push([
-      t.day,
-      MONTHS_ES[mi],
-      isInc ? 'Ingreso' : 'Gasto',
-      catClean,
-      subcatClean,
-      descClean,
-      (isInc ? t.amount : -t.amount).toFixed(2).replace('.', ',')
-    ]);
-  });
+  previewEl.innerHTML = `<div style="background:var(--surface3);border-radius:10px;padding:10px 12px;">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Vista previa — ${dayLabel}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:12px;"><b style="color:var(--text);">${count}</b> <span style="color:var(--muted);">movimientos</span></span>
+      <span style="font-size:12px;color:var(--green);">+${fmt(totalInc)}</span>
+      <span style="font-size:12px;color:var(--red);">-${fmt(totalGas)}</span>
+    </div>
+  </div>`;
+}
 
-  const filterLabel = [
-    typeFilter !== 'all' ? typeFilter : '',
-    activeFilter !== 'all' ? activeFilter : '',
-    searchQ ? 'busqueda' : ''
-  ].filter(Boolean).join('_') || 'todos';
+function doExport(mode) {
+  const mi = S.selectedMonth;
+  let fromMonth, toMonth, fromDay = 1, toDay = 31;
+  const curYear = S.activeYear || new Date().getFullYear();
+  let exportYear = curYear;
 
-  const bom = '\uFEFF';
-  // Use semicolon separator — standard for Spanish/European Excel
-  const csv = bom + rows.map(r => r.map(v => {
-    const s = String(v);
-    // Quote fields that contain semicolons, quotes or newlines
-    if (s.includes(';') || s.includes('"') || s.includes('\n')) {
-      return '"' + s.replace(/"/g, '""') + '"';
+  if (mode === 'month') {
+    fromMonth = toMonth = parseInt(document.getElementById('exp-month-sel')?.value ?? mi);
+  } else if (mode === 'trimestre') {
+    const q = parseInt(document.getElementById('exp-q-sel')?.value ?? Math.floor(mi/3));
+    fromMonth = q * 3; toMonth = Math.min(fromMonth + 2, 11);
+  } else if (mode === 'year') {
+    fromMonth = 0; toMonth = 11;
+    exportYear = parseInt(document.getElementById('exp-year-sel')?.value || '') || curYear;
+  } else if (mode === 'custom') {
+    fromMonth = parseInt(document.getElementById('exp-fm')?.value ?? 0);
+    toMonth   = parseInt(document.getElementById('exp-tm')?.value ?? 11);
+    fromDay   = parseInt(document.getElementById('exp-fd')?.value ?? 1);
+    toDay     = parseInt(document.getElementById('exp-td')?.value ?? 31);
+    exportYear = parseInt(document.getElementById('exp-custom-year')?.value || '') || curYear;
+    if (fromMonth > toMonth || (fromMonth === toMonth && fromDay > toDay)) {
+      showToast('⚠️ La fecha inicial debe ser anterior a la final'); return;
     }
-    return s;
-  }).join(';')).join('\r\n');
+  }
 
-  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Movimientos_${MONTHS_ES[mi]}_${filterLabel}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast(`📥 ${allTxs.length} movimiento${allTxs.length !== 1 ? 's' : ''} exportados`);
+  exportMonthRange(fromMonth, toMonth, fromDay, toDay, exportYear);
+  closeExportPanel();
 }
 
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// EXPORT MOVIMIENTOS — CSV
+// ═══════════════════════════════════════════════════
+function exportMonthRange(fromMonth, toMonth, fromDay, toDay, exportYear) {
+  fromDay=fromDay||1; toDay=toDay||31;
+  const curYear=S.activeYear||new Date().getFullYear();
+  exportYear=exportYear||curYear;
+  const expMonthly=(exportYear!==curYear&&S.archive?.[exportYear])?S.archive[exportYear].monthly:S.monthly;
+  const il=S.ing_labels||{};
+  const synthKeys={sueldo:il.sueldo||'Sueldo fijo neto',extras:il.extras||'Extras / bonus',pasivos:il.pasivos||'Ingresos pasivos',otros:'Otros ingresos'};
+  const rows=[['Dia','Mes','Año','Tipo','Categoría','Subcategoría','Descripción','Importe (EUR)']];
+  let count=0;
+  for(let mi=fromMonth;mi<=toMonth;mi++){
+    const minD=mi===fromMonth?fromDay:1,maxD=mi===toMonth?toDay:31;
+    const mData=expMonthly[mi]||{txs:[],ingresos:{}};
+    const ingBase=mData.ingresos||{};
+    const synth=[];
+    if(minD<=1) Object.entries(synthKeys).forEach(([k,lbl])=>{if((ingBase[k]||0)>0)synth.push({type:'ingreso',cat:'ingreso',subcat:k,amount:ingBase[k],day:1,desc:lbl});});
+    [...(mData.txs||[]).filter(t=>t.day>=minD&&t.day<=maxD),...synth].sort((a,b)=>a.day-b.day).forEach(t=>{
+      const isInc=t.type==='ingreso';
+      rows.push([t.day,MONTHS_ES[mi],exportYear,isInc?'Ingreso':'Gasto',
+        getCatLabel(t.cat).replace(/\p{Emoji_Presentation}\s*/gu,'').trim(),
+        isInc?(il[t.subcat]||t.subcat||''):getSubcatLabel(t.cat,t.subcat),
+        (t.desc||'').trim(),(isInc?t.amount:-t.amount).toFixed(2).replace('.',',')]);
+      count++;
+    });
+  }
+  const rangeLabel=fromMonth===toMonth&&fromDay===1&&toDay===31?MONTHS_ES[fromMonth]:`${MONTHS_ES[fromMonth]}-${MONTHS_ES[toMonth]}`;
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>{const s=String(v);return(s.includes(';')||s.includes('"'))?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`Movimientos_${exportYear}_${rangeLabel}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  showToast(`📥 ${count} movimientos exportados`);
+}
+function exportMovimientosExcel(){exportMonthRange(S.selectedMonth,S.selectedMonth);}
+
+// ═══════════════════════════════════════════════════
+// EXPORTAR AÑO A EXCEL — SpreadsheetML con diseño
+// ═══════════════════════════════════════════════════
+function _xlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Cell: value + optional styleID
+function _xlC(v,s){
+  const sa=s?` ss:StyleID="${s}"`:'';
+  if(v===null||v===undefined||v==='') return `<Cell${sa}/>`;
+  if(typeof v==='number'&&isFinite(v)) return `<Cell${sa}><Data ss:Type="Number">${v}</Data></Cell>`;
+  return `<Cell${sa}><Data ss:Type="String">${_xlEsc(String(v))}</Data></Cell>`;
+}
+// Row: cells are [value,styleId] pairs or plain values
+function _xlR(cells,height){
+  const ha=height?` ss:Height="${height}"`:'';
+  return `<Row${ha}>${cells.map(c=>Array.isArray(c)?_xlC(c[0],c[1]):_xlC(c)).join('')}</Row>`;
+}
+const _xlE='<Row ss:Height="6"/>';
+function _xlWS(name,rows,widths){
+  const cols=(widths||[]).map(w=>`<Column ss:AutoFitWidth="0" ss:Width="${w}"/>`).join('');
+  return `<Worksheet ss:Name="${_xlEsc(name)}"><Table>${cols}${rows.join('')}</Table></Worksheet>`;
+}
+const XL_STYLES=`<Styles>
+<Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="10" ss:Color="#1a1a1a"/></Style>
+<Style ss:ID="ti"><Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="13"/><Interior ss:Color="#1B4332" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+<Style ss:ID="hd"><Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="10"/><Interior ss:Color="#40916C" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+<Style ss:ID="sh"><Font ss:Bold="1" ss:Color="#1B4332" ss:Size="10"/><Interior ss:Color="#D8F3DC" ss:Pattern="Solid"/></Style>
+<Style ss:ID="n0"><NumberFormat ss:Format="#,##0.00"/></Style>
+<Style ss:ID="nG"><Font ss:Color="#1B4332" ss:Bold="1"/><NumberFormat ss:Format="#,##0.00"/></Style>
+<Style ss:ID="nR"><Font ss:Color="#C0392B" ss:Bold="1"/><NumberFormat ss:Format="#,##0.00"/></Style>
+<Style ss:ID="aL"><Interior ss:Color="#F1F8F4" ss:Pattern="Solid"/></Style>
+<Style ss:ID="aN"><Interior ss:Color="#F1F8F4" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0.00"/></Style>
+<Style ss:ID="tL"><Font ss:Bold="1"/><Interior ss:Color="#95D5B2" ss:Pattern="Solid"/></Style>
+<Style ss:ID="tN"><Font ss:Bold="1"/><Interior ss:Color="#95D5B2" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0.00"/></Style>
+<Style ss:ID="bL"><Font ss:Bold="1"/></Style>
+<Style ss:ID="bN"><Font ss:Bold="1"/><NumberFormat ss:Format="#,##0.00"/></Style>
+</Styles>`;
+
+function _buildMonthSheet(mi,expMonthly,yearToExport,debtIdToName){
+  const il=S.ing_labels||{};
+  const mData=expMonthly[mi]||{txs:[],ingresos:{}};
+  const txs=mData.txs||[];
+  const ingBase=mData.ingresos||{};
+  const ingTot=totalIngresos(mi);
+  const gasTot=totalGastos(mi);
+  const gasCat=gatosByCat(mi);
+  const bud=getBudgetPct(mi);
+  const saldoI=getSaldoInicial(mi);
+  const saldoF=getSaldoFinal(mi);
+  // Dynamic subcategory columns from actual transactions
+  const subcatMap=new Map();
+  txs.filter(t=>t.type==='gasto').forEach(t=>{
+    if(!subcatMap.has(t.subcat)){
+      const lbl=t.cat==='deudas'?(debtIdToName[t.subcat]||t.subcat):getSubcatLabel(t.cat,t.subcat)||t.subcat;
+      subcatMap.set(t.subcat,lbl);
+    }
+  });
+  const subcats=[...subcatMap.entries()];
+  const NC=subcats.length;
+  const byDay={};
+  txs.filter(t=>t.type==='gasto').forEach(t=>{(byDay[t.day]||(byDay[t.day]=[])).push(t);});
+  const colWidths=[70,...subcats.map(()=>95),200,10,120,110,110,110];
+  const rows=[];
+  // Title
+  rows.push(_xlR([[`${MONTHS_ES[mi].toUpperCase()} ${yearToExport}  —  REGISTRO MENSUAL`,`ti`]],28));
+  rows.push(_xlE);
+  if(NC>0){
+    // Column headers
+    rows.push(_xlR([['DÍA','hd'],...subcats.map(([,l])=>[l,'hd']),['Descripción','hd']]));
+    // Day rows
+    const sortedDays=Object.keys(byDay).map(Number).sort((a,b)=>a-b);
+    sortedDays.forEach((d,idx)=>{
+      const dayTxs=byDay[d]||[];
+      const cv={};
+      const descs=[];
+      dayTxs.forEach(t=>{cv[t.subcat]=(cv[t.subcat]||0)+t.amount;if(t.desc)descs.push(t.desc);});
+      const alt=idx%2===1;
+      rows.push(_xlR([
+        [`DÍA ${String(d).padStart(2,'0')}`,alt?'aL':null],
+        ...subcats.map(([k])=>{const v=cv[k];return v?[+v.toFixed(2),alt?'aN':'n0']:['',alt?'aL':null];}),
+        [descs.join('; '),alt?'aL':null]
+      ]));
+    });
+    // Totals row
+    const tr=[['TOTALES','tL']];
+    subcats.forEach(([k])=>{const s=txs.filter(t=>t.type==='gasto'&&t.subcat===k).reduce((ss,t)=>ss+t.amount,0);tr.push(s>0?[+s.toFixed(2),'tN']:['','tL']);});
+    tr.push(['','tL']);
+    rows.push(_xlR(tr));
+    rows.push(_xlE);
+  }
+  // Ingresos
+  rows.push(_xlR([['💰  INGRESOS DEL MES','sh']]));
+  const ingRows=[
+    [il.sueldo||'Sueldo fijo neto', ingBase.sueldo||null],
+    [il.extras||'Extras / bonus', ingBase.extras||null],
+    [il.pasivos||'Ingresos pasivos', ingBase.pasivos||null],
+    ['Otros ingresos', ingBase.otros||null],
+  ];
+  ingRows.forEach(([lbl,val],i)=>{
+    const alt=i%2===1;
+    rows.push(_xlR([[lbl,alt?'aL':null],['',alt?'aL':null],[val?+Number(val).toFixed(2):'',val?alt?'aN':'n0':alt?'aL':null]]));
+  });
+  rows.push(_xlR([['TOTAL INGRESOS','tL'],['','tL'],[+ingTot.toFixed(2),'tN']]));
+  rows.push(_xlE);
+  // Balance
+  rows.push(_xlR([['⚖️  BALANCE DEL MES','sh']]));
+  rows.push(_xlR([['Total Ingresos'],[''], [+ingTot.toFixed(2),'nG']]));
+  rows.push(_xlR([['Total Gastos'],[''], [+gasTot.toFixed(2),'nR']]));
+  const res=ingTot-gasTot;
+  rows.push(_xlR([['Resultado','bL'],[''], [+res.toFixed(2),res>=0?'nG':'nR']]));
+  rows.push(_xlR([['Saldo inicial'],[''], [+saldoI.toFixed(2),'n0']]));
+  rows.push(_xlR([['Saldo final','bL'],[''], [+saldoF.toFixed(2),saldoF>=saldoI?'nG':'nR']]));
+  rows.push(_xlE);
+  // Presupuesto vs Real
+  const CAT_KEYS=['gastos_basicos','lujos','empresa','educacion','deudas','inversion','ahorro'];
+  const CAT_LABELS=['Gastos Básicos','Lujos','Empresa','Educación','Deudas','Inversión','Ahorro'];
+  const budData=CAT_KEYS.map((k,i)=>{const p=+(((bud[k]||0)*ingTot).toFixed(2)),r=+((gasCat[k]||0).toFixed(2));return{lbl:CAT_LABELS[i],p,r,dif:+(p-r).toFixed(2)};}).filter(x=>x.p>0||x.r>0);
+  if(budData.length>0){
+    rows.push(_xlR([['📊  PRESUPUESTO vs REAL','sh']]));
+    rows.push(_xlR([['Categoría','hd'],['Presupuesto €','hd'],['Real €','hd'],['Diferencia €','hd']]));
+    budData.forEach((x,i)=>{
+      const alt=i%2===1;
+      rows.push(_xlR([[x.lbl,alt?'aL':null],[x.p,alt?'aN':'n0'],[x.r,alt?'aN':'n0'],[x.dif,x.dif>=0?'nG':'nR']]));
+    });
+  }
+  return _xlWS(MONTHS_ES[mi].slice(0,3).toUpperCase(),rows,colWidths);
+}
+
+function _buildDeudaSheet(expMonthly,yearToExport){
+  const rows=[];
+  rows.push(_xlR([['💳  SEGUIMIENTO DE DEUDAS '+yearToExport,'ti']],28));
+  rows.push(_xlE);
+  // Summary
+  rows.push(_xlR([['Deuda','hd'],['Capital Inicial','hd'],['Capital Restante','hd'],['TIN %','hd'],['Cuota mensual','hd'],['Amortizado este año','hd']]));
+  S.debts.forEach((d,i)=>{
+    const amort=expMonthly.reduce((s,m)=>s+(m?.txs||[]).filter(t=>t.cat==='deudas'&&t.subcat===d.id).reduce((ss,t)=>ss+t.amount,0),0);
+    const alt=i%2===1;
+    rows.push(_xlR([[d.name,alt?'aL':null],[+d.capital_ini,alt?'aN':'n0'],[+d.capital_rest,alt?'aN':'n0'],[+d.tin,alt?'aN':'n0'],[+d.cuota,alt?'aN':'n0'],[+amort.toFixed(2),alt?'aN':'n0']]));
+  });
+  rows.push(_xlE);
+  // Monthly amortization breakdown
+  rows.push(_xlR([['📅  AMORTIZACIÓN MENSUAL POR DEUDA','sh']]));
+  rows.push(_xlE);
+  rows.push(_xlR([['Mes','hd'],...S.debts.map(d=>[d.name,'hd']),['TOTAL','hd']]));
+  let totals=new Array(S.debts.length).fill(0), grandTotal=0;
+  MONTHS_ES.forEach((m,mi)=>{
+    const txs=expMonthly[mi]?.txs||[];
+    const amounts=S.debts.map(d=>txs.filter(t=>t.cat==='deudas'&&t.subcat===d.id).reduce((s,t)=>s+t.amount,0));
+    const total=amounts.reduce((s,v)=>s+v,0);
+    if(total===0) return;
+    const alt=mi%2===1;
+    amounts.forEach((v,i)=>{totals[i]+=v; grandTotal+=v;});
+    rows.push(_xlR([[m,alt?'aL':null],...amounts.map(v=>v>0?[+v.toFixed(2),alt?'aN':'n0']:['',alt?'aL':null]),[+total.toFixed(2),alt?'aN':'n0']]));
+  });
+  if(grandTotal>0) rows.push(_xlR([['TOTAL','tL'],...totals.map(v=>[+v.toFixed(2),'tN']),[+grandTotal.toFixed(2),'tN']]));
+  return _xlWS('Deudas',rows,[120,...S.debts.map(()=>100),80]);
+}
+
+function _buildAhorroSheet(expMonthly,yearToExport){
+  const rows=[];
+  rows.push(_xlR([['🛡️  COLCHÓN DE SEGURIDAD Y AHORRO '+yearToExport,'ti']],28));
+  rows.push(_xlE);
+  rows.push(_xlR([['OBJETIVOS DE AHORRO','sh']]));
+  rows.push(_xlR([['Colchón de emergencia'],[''],['Objetivo'],[+S.ahorro_obj_colchon||0,'n0']]));
+  rows.push(_xlR([['Ahorro a corto plazo'],[''],['Objetivo'],[+S.ahorro_obj_cp||0,'n0']]));
+  rows.push(_xlR([['Ahorro a largo plazo'],[''],['Objetivo'],[+S.ahorro_obj_lp||0,'n0']]));
+  rows.push(_xlE);
+  rows.push(_xlR([['RENTABILIDADES CONFIGURADAS','sh']]));
+  rows.push(_xlR([['TIN cuenta remunerada (%)'],[''],[S.ahorro_tin||0,'n0']]));
+  rows.push(_xlR([['Rentabilidad inversiones (%)'],[''],[S.ahorro_inv_rent||0,'n0']]));
+  rows.push(_xlE);
+  rows.push(_xlR([['SEGUIMIENTO MENSUAL','sh']]));
+  rows.push(_xlR([['Mes','hd'],['Aportado €','hd'],['Interés generado €','hd'],['Acumulado €','hd']]));
+  let rBal=S.ahorro_remunerado||0,iBal=S.ahorro_inversiones||0,pAcc=(S.ahorro_ini||0)+(S.ahorro_efectivo||0)+(S.ahorro_cuenta||0);
+  const tM=(S.ahorro_tin||0)/100/12,iM=(S.ahorro_inv_rent||0)/100/12;
+  for(let i=0;i<12;i++){
+    const txs=expMonthly[i]?.txs||[];
+    const ap=txs.filter(t=>t.cat==='ahorro').reduce((s,t)=>s+t.amount,0);
+    const rMes=txs.filter(t=>t.cat==='inversion'&&t.subcat==='cuenta_remunerada').reduce((s,t)=>s+t.amount,0);
+    const iMes=txs.filter(t=>t.cat==='inversion'&&t.subcat!=='cuenta_remunerada').reduce((s,t)=>s+t.amount,0);
+    const iR=rBal*tM,iI=iBal*iM;
+    rBal=(rBal+iR)+rMes; iBal=(iBal+iI)+iMes; pAcc+=ap;
+    const acum=+(pAcc+rBal+iBal).toFixed(2);
+    const alt=i%2===1;
+    rows.push(_xlR([[MONTHS_ES[i],alt?'aL':null],[+(ap+rMes+iMes).toFixed(2),alt?'aN':'n0'],[+(iR+iI).toFixed(2),alt?'aN':'n0'],[acum,alt?'aN':'nG']]));
+  }
+  return _xlWS('Ahorro',rows,[120,110,130,110]);
+}
+
+function _buildTotalesSheet(expMonthly,yearToExport){
+  const rows=[];
+  rows.push(_xlR([['📊  RESUMEN ANUAL '+yearToExport,'ti']],28));
+  rows.push(_xlE);
+  rows.push(_xlR([['Mes','hd'],['Ingresos €','hd'],['Gastos €','hd'],['Resultado €','hd'],['Saldo inicial €','hd'],['Saldo final €','hd']]));
+  let totI=0,totG=0;
+  for(let mi=0;mi<12;mi++){
+    const ing=totalIngresos(mi),gas=totalGastos(mi);
+    totI+=ing; totG+=gas;
+    const res=ing-gas;
+    const alt=mi%2===1;
+    rows.push(_xlR([[MONTHS_ES[mi],alt?'aL':null],[+ing.toFixed(2),alt?'aN':'n0'],[+gas.toFixed(2),alt?'aN':'n0'],[+res.toFixed(2),res>=0?'nG':'nR'],[+getSaldoInicial(mi).toFixed(2),alt?'aN':'n0'],[+getSaldoFinal(mi).toFixed(2),alt?'aN':'n0']]));
+  }
+  const totRes=totI-totG;
+  rows.push(_xlR([['TOTAL AÑO','tL'],[+totI.toFixed(2),'tN'],[+totG.toFixed(2),'tN'],[+totRes.toFixed(2),totRes>=0?'tN':'nR'],['','tL'],[+getSaldoFinal(11).toFixed(2),'tN']]));
+  rows.push(_xlE);
+  if(S.debts.length>0){
+    rows.push(_xlR([['DEUDAS AL CIERRE DEL AÑO','sh']]));
+    rows.push(_xlR([['Deuda','hd'],['Capital pendiente','hd'],['Cuota mensual','hd']]));
+    S.debts.forEach((d,i)=>{
+      const alt=i%2===1;
+      rows.push(_xlR([[d.name,alt?'aL':null],[+d.capital_rest,alt?'aN':'n0'],[+d.cuota,alt?'aN':'n0']]));
+    });
+    rows.push(_xlR([['TOTAL DEUDA','tL'],[+S.debts.reduce((s,d)=>s+d.capital_rest,0).toFixed(2),'tN'],['']]));
+  }
+  return _xlWS('Totales',rows,[120,110,100,110,120,110]);
+}
+
+function exportAnualExcel(yearToExport){
+  const curYear=S.activeYear||new Date().getFullYear();
+  yearToExport=yearToExport||curYear;
+  const expMonthly=(yearToExport!==curYear&&S.archive?.[yearToExport])?S.archive[yearToExport].monthly:S.monthly;
+  const totalTxs=(expMonthly||[]).reduce((s,m)=>s+(m?.txs?.length||0),0);
+  const totalIng=(expMonthly||[]).reduce((s,m)=>s+Object.values(m?.ingresos||{}).reduce((ss,v)=>ss+(v||0),0),0);
+  if(totalTxs===0&&totalIng===0){showInfo('Sin datos','No hay movimientos registrados en '+yearToExport);return;}
+  const prevYear=S.selectedYear,prevMonthly=S.monthly;
+  S.selectedYear=yearToExport;
+  if(yearToExport!==curYear&&S.archive?.[yearToExport]) S.monthly=expMonthly;
+  try{
+    const debtIdToName={};
+    S.debts.forEach(d=>{debtIdToName[d.id]=d.name;});
+    const sheets=[];
+    for(let mi=0;mi<12;mi++) sheets.push(_buildMonthSheet(mi,expMonthly,yearToExport,debtIdToName));
+    sheets.push(_buildDeudaSheet(expMonthly,yearToExport));
+    sheets.push(_buildAhorroSheet(expMonthly,yearToExport));
+    sheets.push(_buildTotalesSheet(expMonthly,yearToExport));
+    const xml=[
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<?mso-application progid="Excel.Sheet"?>',
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+      XL_STYLES,
+      ...sheets,
+      '</Workbook>'
+    ].join('\n');
+    const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='FinanzasApp_'+yearToExport+'.xls';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    showToast('✅ Excel exportado — '+totalTxs+' movimientos');
+  }catch(e){
+    showToast('Error: '+e.message);
+    console.error(e);
+  }finally{
+    S.selectedYear=prevYear;
+    S.monthly=prevMonthly;
+  }
+}
+
+
 // AUTH FLOW — Login / Register
 // ═══════════════════════════════════════════════════
 let loginPinBuf = '';
@@ -3332,20 +4072,27 @@ function openProfile() {
       <div style="background:var(--surface2);border-radius:14px;padding:14px;margin-bottom:12px;">
         <div class="form-label" style="margin-bottom:12px;">🔐 Seguridad</div>
         <div class="setting-row">
-          <div>
-            <div style="font-size:14px;font-weight:500;">PIN de acceso</div>
-            <div style="font-size:11px;color:var(--muted);">${hasPIN?'PIN activo · toca para cambiarlo':'Sin PIN configurado'}</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div>
+              <div style="font-size:14px;font-weight:500;">PIN de acceso</div>
+              <div style="font-size:11px;color:var(--muted);">${hasPIN?'PIN activo · toca para cambiarlo':'Sin PIN configurado'}</div>
+            </div>
           </div>
           <button onclick="closeProfile();showPinScreen('set')" style="background:${hasPIN?'var(--surface3)':'var(--accent)'};color:${hasPIN?'var(--text)':'white'};border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">${hasPIN?'Cambiar PIN':'Activar PIN'}</button>
         </div>
         ${hasPIN?`<div class="setting-row">
-          <div><div style="font-size:14px;font-weight:500;">Desactivar PIN</div></div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div style="font-size:14px;font-weight:500;">Desactivar PIN</div>
+            <button class="info-btn" onclick="showInfo('⚠️ Desactivar PIN','Si desactivas el PIN, cualquier persona con acceso físico a tu dispositivo podrá abrir la app y ver tus datos financieros sin ninguna restricción. Se recomienda mantenerlo siempre activo.')">i</button>
+          </div>
           <button onclick="removePin()" style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">Desactivar</button>
         </div>`:''}
         <div class="setting-row">
-          <div>
-            <div style="font-size:14px;font-weight:500;">Recuperación de acceso</div>
-            <div style="font-size:11px;color:var(--muted);">${S.recoveryEmail?'Email: '+S.recoveryEmail:(S.recoveryQuestion?'Pregunta secreta configurada':'Sin método de recuperación')}</div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div>
+              <div style="font-size:14px;font-weight:500;">Recuperación de acceso<button class="info-btn" onclick="showInfo('🔑 Recuperación de acceso','Configura una pregunta secreta para poder recuperar el acceso a la app si olvidas tu PIN. Sin este método configurado, si pierdes el PIN no podrás acceder a tus datos.')">i</button></div>
+              <div style="font-size:11px;color:var(--muted);">${S.recoveryEmail?'Email: '+S.recoveryEmail:(S.recoveryQuestion?'Pregunta secreta configurada':'Sin método de recuperación')}</div>
+            </div>
           </div>
           <button onclick="openPinRecoverySetup()" style="background:var(--surface3);color:var(--text);border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">Configurar</button>
         </div>
@@ -3355,7 +4102,7 @@ function openProfile() {
         <div class="form-label" style="margin-bottom:12px;">⚙️ Configuración de partidas</div>
         <div class="setting-row">
           <div>
-            <div style="font-size:14px;font-weight:500;">Partidas, ingresos y deudas</div>
+            <div style="font-size:14px;font-weight:500;">Categorías, ingresos y presupuesto<button class="info-btn" onclick="showInfo('⚙️ Configuración de partidas','Desde aquí puedes renombrar cualquier categoría o subcategoría de gasto, personalizar las etiquetas de tus fuentes de ingreso y ajustar los porcentajes del presupuesto mensual. Los cambios se reflejan en todas las pantallas de la app.')">i</button></div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px;">Renombra partidas, porcentajes e ingresos</div>
           </div>
           <button onclick="closeProfile();goTo('config',null);" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">Abrir →</button>
@@ -3364,24 +4111,59 @@ function openProfile() {
 
       <div style="background:var(--surface2);border-radius:14px;padding:14px;margin-bottom:12px;">
         <div class="form-label" style="margin-bottom:12px;">🗄️ Gestión de datos</div>
+
         <div class="setting-row">
           <div>
-            <div style="font-size:14px;font-weight:500;">Rehacer configuración inicial</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Resetea perfil e importes. Las transacciones se conservan.</div>
+            <div style="font-size:14px;font-weight:500;">📊 Exportar año completo a Excel<button class="info-btn" onclick="showInfo('📊 Exportar año a Excel','Descarga un fichero Excel (.xlsx) con un resumen visual y ordenado de todo el año: una hoja por cada mes con los gastos distribuidos por categoría, comparativa de lo que planificaste gastar vs lo que gastaste de verdad, ingresos y saldo mensual. Incluye también un resumen de tus deudas, el seguimiento de tu ahorro y el balance anual completo. Útil para revisar cómo ha ido el año económicamente, compartirlo con otra persona o guardarlo para el futuro.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Fichero Excel con todos los meses, deudas, ahorro y balance del año</div>
+          </div>
+          <button onclick="exportAnualExcel()" style="background:var(--green-dim);color:var(--green);border:1px solid var(--green);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Excel</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div style="font-size:14px;font-weight:500;">📤 Exportar copia de seguridad<button class="info-btn" onclick="showInfo('📤 Copia de seguridad (.json)','Descarga una copia de seguridad de todos tus datos en formato .json. A diferencia del Excel, este fichero no está pensado para leerlo tú, sino para importarlo de vuelta en la app. Úsalo si vas a cambiar de móvil, reinstalar la app o simplemente quieres tener un respaldo por si acaso. Al importarlo, la app quedará exactamente igual que estaba.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Copia técnica para restaurar la app — no para leer</div>
+          </div>
+          <button onclick="exportBackup()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Exportar</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div style="font-size:14px;font-weight:500;">📥 Importar copia de seguridad<button class="info-btn" onclick="showInfo('📥 Importar copia de seguridad','Si tienes una copia de seguridad guardada, puedes importarla aquí para restaurar todos tus datos. Si el backup es del año en curso, quedará completamente editable. Si es de un año anterior, podrás añadirlo al historial o activarlo como año editable. Ideal para cambios de móvil o recuperación de datos.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Restaura desde un .json exportado anteriormente</div>
+          </div>
+          <button onclick="document.getElementById('backup-file-input').click()" style="background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Importar</button>
+          <input type="file" id="backup-file-input" accept=".json" style="display:none" onchange="importBackup(event)">
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div style="font-size:14px;font-weight:500;">📦 Archivar año y empezar nuevo<button class="info-btn" onclick="showInfo('📦 Archivar año y empezar nuevo','Cierra el año en curso, guarda todos sus datos en el historial y abre un año nuevo comenzando con los saldos finales del año anterior: saldo en cuenta, capital pendiente de deudas y ahorros acumulados. Los meses del nuevo año quedan a cero para que empieces a registrar desde el 1 de enero. Los datos del año archivado son de solo lectura pero siempre accesibles. Diferencia con «Exportar copia»: archivar es una acción dentro de la propia app, no descarga ningún fichero.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Cierra ${S.activeYear || new Date().getFullYear()} y abre ${(S.activeYear || new Date().getFullYear()) + 1} con los saldos actuales</div>
+          </div>
+          <button onclick="closeProfile();archiveCurrentYear()" style="background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Archivar →</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div style="font-size:14px;font-weight:500;">🔄 Rehacer configuración inicial<button class="info-btn" onclick="showInfo('🔄 Rehacer configuración inicial','Borra los datos de perfil, ingresos estimados y configuración de presupuesto, y te lleva de nuevo al formulario de configuración inicial con los valores que rellenaste la primera vez como punto de partida. Tus movimientos registrados se conservan intactos.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Repite el asistente inicial conservando tus movimientos</div>
           </div>
           <button onclick="closeProfile();confirmAction('resetSetup')" style="background:var(--yellow-dim);color:var(--yellow);border:1px solid var(--yellow);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Rehacer</button>
         </div>
+
         <div class="setting-row">
           <div>
-            <div style="font-size:14px;font-weight:500;">Borrar todos los datos</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Elimina todo. Acción irreversible.</div>
+            <div style="font-size:14px;font-weight:500;">🗑️ Borrar todos los datos<button class="info-btn" onclick="showInfo('🗑️ Borrar todos los datos','Elimina toda la información de la app: movimientos, deudas, ahorro, configuración e historial. La app quedará completamente vacía, como si acabaras de instalarla. Diferencia con «Rehacer configuración»: esa opción conserva los movimientos y te lleva al formulario inicial; esta opción lo borra todo sin excepción.')">i</button></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Elimina todos los datos y deja la app vacía</div>
           </div>
           <button onclick="closeProfile();confirmAction('wipeAll')" style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px;">Borrar todo</button>
         </div>
       </div>
 
       <div style="text-align:center;padding:16px 0;color:var(--muted);font-size:11px;line-height:1.6;">
-        FinanzasApp v9.0<br>Datos almacenados localmente en tu dispositivo
+        FinanzasApp v1.0<br>Datos almacenados localmente en tu dispositivo
       </div>
 
       <!-- Logout button -->
@@ -3815,8 +4597,14 @@ function saveMovement() {
   if(movType==='gasto') {
     const cat = document.getElementById('add-cat').value;
     const subcat = document.getElementById('add-subcat').value;
+    // For debt payments, use debt name as default description
+    let txDesc = desc;
+    if (cat === 'deudas' && !txDesc) {
+      const debtObj = S.debts.find(d => d.id === subcat);
+      if (debtObj) txDesc = debtObj.name;
+    }
     // Insert at start so newest appears first
-    S.monthly[mi].txs.unshift({type:'gasto',cat,subcat,amount,day,desc});
+    S.monthly[mi].txs.unshift({type:'gasto',cat,subcat,amount,day,desc:txDesc});
     // If debt payment, reduce capital
     if(cat==='deudas') {
       const d = S.debts.find(d=>d.id===subcat || d.name.toLowerCase()===subcat.toLowerCase());
@@ -3861,6 +4649,17 @@ function parseAmountInput(val) {
   return parseFloat(val.replace(/\./g,'').replace(',','.')) || 0;
 }
 // ═══════════════════════════════════════════════════
+// INFO MODAL
+// ═══════════════════════════════════════════════════
+function showInfo(title, body) {
+  document.getElementById('info-modal-title').textContent = title;
+  document.getElementById('info-modal-body').textContent = body;
+  document.getElementById('info-overlay').classList.add('open');
+}
+function closeInfoModal() {
+  document.getElementById('info-overlay').classList.remove('open');
+}
+
 function showToast(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
